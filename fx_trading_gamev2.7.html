@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<!--- 1793575141621 --->
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Game: Forex Edition (USD/JPY)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8">
+    <div id="app" class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                    Forex Trading Game: USD/JPY
+                </h1>
+                <p id="header-subtitle" class="text-slate-400 text-sm mt-1">25x Leverage • 22-Day Season • Target: $200</p>
+            </div>
+            
+            <!-- Buttons & Day Tracker -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <button onclick="toggleSettingsModal()" class="px-3 py-1.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    ⚙️ Settings
+                </button>
+                <button onclick="toggleRulesModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    📖 Rules
+                </button>
+                <button onclick="toggleGlossaryModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all">
+                    📚 Glossary
+                </button>
+                <div class="flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+                    <div>
+                        <span class="text-xs text-slate-400 block">Day / Round</span>
+                        <span id="current-day" class="text-lg font-bold text-cyan-400">1 / 22</span>
+                    </div>
+                    <div class="h-8 w-px bg-slate-800"></div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Day Type</span>
+                        <span id="day-type-badge" class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">Standard Day</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Total Cash Bankroll</span>
+                <div id="stat-cash" class="text-2xl font-bold text-emerald-400 mt-1">$100</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Active Bet (Principal)</span>
+                <div id="stat-bet" class="text-2xl font-bold text-slate-200 mt-1">$0</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Collateral Buffer</span>
+                <div id="stat-collateral" class="text-2xl font-bold text-amber-400 mt-1">$0</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <span class="text-xs text-slate-400">Uninvested Reserve</span>
+                <div id="stat-reserve" class="text-2xl font-bold text-cyan-400 mt-1">$100</div>
+            </div>
+        </div>
+
+        <!-- Main Layout: Game Area + News Feed Sidebar -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left 2 Columns: Main Game Dashboard & Trade Log -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <!-- Allocation Phase -->
+                    <div id="phase-allocation" class="space-y-6">
+                        <div class="border-b border-slate-800 pb-4">
+                            <h2 class="text-lg font-semibold text-slate-200">Step 1: Capital Allocation & Position</h2>
+                            <p class="text-sm text-slate-400">Divide your bankroll into 3 piles and set your leverage exposure.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Bet Input -->
+                            <div class="space-y-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800/80">
+                                <label class="block text-sm font-medium text-slate-300">1. Bet (Principal)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" id="input-bet" value="20" min="1" max="100" class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-8 pr-4 text-slate-100 focus:outline-none focus:border-cyan-500 font-bold" oninput="updateCalculations()">
+                                </div>
+                                <div class="bg-cyan-950/40 border border-cyan-800/60 rounded-lg p-2 text-xs flex justify-between items-center mt-2">
+                                    <span class="text-cyan-300">Margin Exposure (25x):</span>
+                                    <span id="display-margin" class="font-bold text-cyan-400 text-sm">$500</span>
+                                </div>
+                            </div>
+
+                            <!-- Collateral Input -->
+                            <div class="space-y-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800/80">
+                                <label class="block text-sm font-medium text-slate-300">2. Collateral (Buffer)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" id="input-collateral" value="30" min="0" max="100" class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 pl-8 pr-4 text-slate-100 focus:outline-none focus:border-cyan-500 font-bold" oninput="updateCalculations()">
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">Loss buffer absorber.</p>
+                            </div>
+
+                            <!-- Reserve Input -->
+                            <div class="space-y-2 bg-slate-950/50 p-4 rounded-xl border border-slate-800/80">
+                                <label class="block text-sm font-medium text-slate-300">3. Safe Reserve</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input type="number" id="input-reserve" value="50" readonly class="w-full bg-slate-900/50 border border-slate-800 rounded-lg py-2 pl-8 pr-4 text-slate-400 font-bold cursor-not-allowed">
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">Protected liquid cash.</p>
+                            </div>
+                        </div>
+
+                        <!-- Direction Selection -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-medium text-slate-300">Select Market Direction</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button onclick="setDirection('LONG_USD')" id="btn-long-usd" class="p-4 rounded-xl border-2 border-emerald-500 bg-emerald-950/30 text-emerald-300 font-semibold flex flex-col items-center gap-1 transition-all">
+                                    <span class="text-base md:text-lg">🔴 Long USD / Short JPY</span>
+                                    <span class="text-xs text-slate-400">USD strengthens (USD/JPY ↗)</span>
+                                </button>
+                                <button onclick="setDirection('LONG_JPY')" id="btn-long-jpy" class="p-4 rounded-xl border-2 border-slate-800 bg-slate-950 text-slate-400 font-semibold flex flex-col items-center gap-1 transition-all">
+                                    <span class="text-base md:text-lg">⬛ Short USD / Long JPY</span>
+                                    <span class="text-xs text-slate-400">JPY strengthens (USD/JPY ↙)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="allocation-error" class="text-red-400 text-sm hidden">⚠️ Error: Bet + Collateral exceeds available bankroll!</div>
+
+                        <button onclick="executeRound()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-slate-950 font-bold rounded-xl shadow-lg transition-all">
+                            Submit Position & Draw Cards 🎲
+                        </button>
+                    </div>
+
+                    <!-- Resolution Phase -->
+                    <div id="phase-resolution" class="space-y-6 hidden">
+                        <div class="border-b border-slate-800 pb-4">
+                            <h2 class="text-lg font-semibold text-slate-200">Step 2: Market Catalyst & Cards</h2>
+                            <p class="text-sm text-slate-400">Cards drawn for today's trading session.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                                <div id="card-event-badge" class="w-14 h-20 rounded-lg bg-red-950 border border-red-700 flex flex-col items-center justify-center font-bold text-red-400 shadow-md flex-shrink-0">
+                                    <span id="event-rank" class="text-lg">K</span>
+                                    <span id="event-suit" class="text-[10px]">RED</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Event Card (Trading Calendar)</span>
+                                    <h3 id="event-name" class="text-sm font-bold text-slate-200 mt-0.5">US CPI Inflation Data</h3>
+                                    <p id="event-effect" class="text-xs text-slate-400 mt-1">+3 Points (+300 pips)</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                                <div id="card-money-badge" class="w-14 h-20 rounded-lg bg-red-950 border border-red-700 flex flex-col items-center justify-center font-bold text-red-400 shadow-md flex-shrink-0">
+                                    <span id="money-value" class="text-xl">8</span>
+                                    <span id="money-suit" class="text-[10px]">RED</span>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 uppercase tracking-wider">Money Card (Risk Sentiment)</span>
+                                    <h3 id="money-name" class="text-sm font-bold text-slate-200 mt-0.5">Base: 8 Points</h3>
+                                    <p id="money-effect" class="text-xs text-slate-400 mt-1">Global Safe-Haven Demand</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+                            <h3 class="font-semibold text-slate-200 border-b border-slate-800 pb-2 text-sm">Settlement Summary</h3>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-slate-400 text-xs block">Total Move:</span>
+                                    <span id="res-total-pips" class="font-bold text-cyan-400 text-base">+1,100 Pips</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-xs block">Your Bet:</span>
+                                    <span id="res-direction" class="font-bold text-emerald-400 text-base">Long USD ($500)</span>
+                                </div>
+                            </div>
+                            <div id="res-outcome-text" class="text-xs p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/60 text-emerald-300 font-medium"></div>
+                        </div>
+
+                        <div id="loss-action-container" class="space-y-3 hidden bg-amber-950/20 border border-amber-800/50 p-4 rounded-xl">
+                            <h4 class="font-semibold text-amber-300 text-xs">⚠️ Trade Loss. Select Settlement Option:</h4>
+                            <div class="flex gap-2">
+                                <button onclick="resolveLossAction('CLOSE')" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold border border-slate-700">
+                                    Option A: Close Position
+                                </button>
+                                <button onclick="resolveLossAction('ROLLOVER')" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 rounded-lg text-xs font-bold">
+                                    Option B: Roll Over ($5 Fee)
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="btn-next-round" onclick="nextRound()" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-slate-950 font-bold rounded-xl shadow-lg transition-all">
+                            Proceed to Next Trading Day ➡️
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TRADE LOG / TRANSACTION HISTORY -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                        <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
+                            <span>📊 Season Trade Log</span>
+                            <span id="log-count-badge" class="text-xs font-normal bg-slate-800 px-2 py-0.5 rounded text-slate-400">0 Trades</span>
+                        </h2>
+                        <span class="text-xs text-slate-500">History updates automatically each round</span>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar max-h-60">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0">
+                                <tr>
+                                    <th class="p-2.5 rounded-l-lg">Day</th>
+                                    <th class="p-2.5">Position</th>
+                                    <th class="p-2.5">Bet / Margin</th>
+                                    <th class="p-2.5">Cards & Risk Sentiment</th>
+                                    <th class="p-2.5">Move</th>
+                                    <th class="p-2.5">Result</th>
+                                    <th class="p-2.5 rounded-r-lg">Bankroll</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trade-log-tbody" class="divide-y divide-slate-800/60">
+                                <tr>
+                                    <td colspan="7" class="p-4 text-center text-slate-500">No trades executed yet this season. Place your first order above!</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Live Google News XML/RSS Feed Sidebar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col h-[650px]">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">XML</span>
+                        <h2 class="text-sm font-bold text-slate-200">Google News RSS (USD/JPY)</h2>
+                    </div>
+                    <button onclick="fetchGoogleNewsFeed()" title="Refresh Feed" class="text-slate-400 hover:text-cyan-400 text-xs transition-colors">
+                        🔄
+                    </button>
+                </div>
+
+                <!-- Feed Items Container -->
+                <div id="google-rss-container" class="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar text-xs">
+                    <div class="text-slate-500 text-center py-10 flex flex-col items-center gap-2">
+                        <div class="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
+                        <span>Parsing Google News XML...</span>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800 pt-2 mt-3 flex justify-between text-[10px] text-slate-500">
+                    <span>Source: Google News XML Feed</span>
+                    <span id="rss-last-updated">Updating...</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- GAME LOST / BANKRUPT MODAL -->
+    <div id="game-lost-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-red-900/60 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+            <div class="w-16 h-16 bg-red-950/60 border border-red-800/80 rounded-2xl mx-auto flex items-center justify-center text-3xl">
+                💀
+            </div>
+            <div class="space-y-1">
+                <h2 class="text-xl font-bold text-red-400">Game Lost - Bankrupt!</h2>
+                <p class="text-xs text-slate-400">Your cash bankroll has been completely wiped out. Season over.</p>
+            </div>
+            <button onclick="resetGameFromModal()" class="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs shadow-lg transition-all">
+                Reset & Try Again 🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h2 class="text-lg font-bold text-cyan-400 flex items-center gap-2">⚙️ Game Settings</h2>
+                <button onclick="toggleSettingsModal()" class="text-slate-400 hover:text-slate-100 text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-4 text-xs text-slate-300">
+                <div class="space-y-1.5">
+                    <label class="block font-medium text-slate-200">Win Target Bankroll ($)</label>
+                    <input type="number" id="setting-win-target" value="200" min="110" step="10" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 font-bold focus:outline-none focus:border-cyan-500">
+                    <p class="text-[11px] text-slate-500">Reach this amount to win the season immediately.</p>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block font-medium text-slate-200">Total Season Days / Rounds</label>
+                    <input type="number" id="setting-max-days" value="22" min="5" max="100" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 font-bold focus:outline-none focus:border-cyan-500">
+                    <p class="text-[11px] text-slate-500">Number of trading sessions in the season.</p>
+                </div>
+            </div>
+
+            <button onclick="applySettings()" class="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-slate-950 font-bold rounded-xl text-xs transition-all">
+                Save & Restart Season 🔄
+            </button>
+        </div>
+    </div>
+
+    <!-- RULES MODAL -->
+    <div id="rules-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h2 class="text-lg font-bold text-cyan-400 flex items-center gap-2">📖 Forex Trading Game Rules & Mechanics</h2>
+                <button onclick="toggleRulesModal()" class="text-slate-400 hover:text-slate-100 text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <h3 class="font-bold text-slate-100 text-sm">1. Core Setup & 3-Pile Allocation</h3>
+                <p>Each player starts with <strong>$100 Cash</strong>. Before each round, divide your cash into 3 piles:</p>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Bet (Principal):</strong> Your active exposure multiplied by <strong>25x leverage</strong> ($20 bet = $500 total exposure).</li>
+                    <li><strong>Collateral (Buffer):</strong> Reserved margin to absorb negative pip swings.</li>
+                    <li><strong>Uninvested Reserve:</strong> Safe liquid cash protected from market moves in the current round.</li>
+                </ul>
+
+                <h3 class="font-bold text-slate-100 text-sm pt-2">2. Card Mechanics & Pip Movement</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Money Cards (2-10):</strong> Sets base move (1 point = 100 pips) based on Risk-On sentiment vs. Safe-Haven / Risk-Off demand. 🔴 Red = USD Strength | ⬛ Black = JPY Strength.</li>
+                    <li><strong>Event Cards (J, Q, K, A):</strong> Adds volatility modifier (+1 to +4 points) mapped to real economic calendar events (FOMC, NFP, CPI, BoJ Rate releases, MoF intervention).</li>
+                    <li><strong>Catalyst Days:</strong> High volatility scheduled rounds that automatically add an extra <strong>+1 Point (+100 pips)</strong> boost.</li>
+                </ul>
+
+                <h3 class="font-bold text-slate-100 text-sm pt-2">3. Settlement, Rollovers & Liquidation</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Winners:</strong> Collect profit proportional to position size and pip movement.</li>
+                    <li><strong>Losers (Loss &le; Collateral):</strong> Loss deducted from buffer. Choose to close position OR pay a <strong>$5 Carrying Fee</strong> to roll over into the next round.</li>
+                    <li><strong>Liquidation (Loss > Collateral):</strong> Position wiped out! Entire <strong>Bet + Collateral</strong> forfeited to the bank.</li>
+                </ul>
+            </div>
+
+            <button onclick="toggleRulesModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all">
+                Close & Return to Game
+            </button>
+        </div>
+    </div>
+
+    <!-- GLOSSARY MODAL -->
+    <div id="glossary-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h2 class="text-lg font-bold text-cyan-400 flex items-center gap-2">📚 Simulation Glossary & Terms</h2>
+                <button onclick="toggleGlossaryModal()" class="text-slate-400 hover:text-slate-100 text-xl font-bold">&times;</button>
+            </div>
+
+            <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                <h3 class="font-bold text-slate-100 text-sm">A. Core Capital & Position Piles</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Total Cash Bankroll:</strong> Your overall liquid account balance starting at $100.</li>
+                    <li><strong>Bet (Principal):</strong> The portion of cash risked as the base position for the round.</li>
+                    <li><strong>Margin Exposure:</strong> Your Bet multiplied by <strong>25x leverage</strong> ($20 bet = $500 margin).</li>
+                    <li><strong>Collateral (Buffer):</strong> Cash set aside to absorb negative pip swings and losses.</li>
+                    <li><strong>Uninvested Reserve:</strong> Safe liquid cash protected from market moves in the current round.</li>
+                </ul>
+
+                <h3 class="font-bold text-slate-100 text-sm pt-2">B. Market Mechanics & Cards</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Money Cards (2–10):</strong> Reflect Risk-On appetite vs. Risk-Off / Safe-Haven flows. 🔴 Red = USD strength | ⬛ Black = JPY strength.</li>
+                    <li><strong>Event Cards (J, Q, K, A):</strong> Volatility modifiers (+1 to +4 points) tied to macro trading calendar releases.</li>
+                    <li><strong>Catalyst Days:</strong> High-volatility scheduled rounds that automatically add an extra <strong>+1 Point (+100 pips)</strong> boost.</li>
+                </ul>
+
+                <h3 class="font-bold text-slate-100 text-sm pt-2">C. Outcomes & Risk Management</h3>
+                <ul class="list-disc pl-5 space-y-1 text-slate-400">
+                    <li><strong>Long USD / Short JPY:</strong> Betting that USD strengthens against JPY (USD/JPY ↗).</li>
+                    <li><strong>Short USD / Long JPY:</strong> Betting that JPY strengthens against USD (USD/JPY ↙).</li>
+                    <li><strong>Rollover ($5 Fee):</strong> Paying a $5 fee from reserve to carry a losing trade into the next day.</li>
+                    <li><strong>Liquidation:</strong> Triggered when a trade loss exceeds your Collateral buffer ($Loss > Collateral$), forfeiting Bet + Collateral.</li>
+                </ul>
+            </div>
+
+            <button onclick="toggleGlossaryModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-all">
+                Close & Return to Game
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            cash: 100,
+            bet: 20,
+            collateral: 30,
+            reserve: 50,
+            direction: 'LONG_USD',
+            day: 1,
+            maxDays: 22,
+            winTarget: 200,
+            activeLoss: null,
+            tradeHistory: [],
+            isRolledOver: false,
+            accumulatedLoss: 0
+        };
+
+        const catalystDays = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+        let currentRoundData = {};
+
+        // Macro Trading Calendar Deck for Event Cards
+        const eventCalendarDeck = [
+            { rank: 'J', suit: 'RED', country: 'USA', name: 'FOMC Rate Decision', mod: 1, desc: 'Fed adjusts funds rate target; USD yield spreads widen.' },
+            { rank: 'J', suit: 'BLACK', country: 'Japan', name: 'BoJ Policy Rate Release', mod: 1, desc: 'Bank of Japan tweaks policy rate guidance; JPY yields shift.' },
+            { rank: 'Q', suit: 'RED', country: 'USA', name: 'US Non-Farm Payrolls (NFP)', mod: 2, desc: 'Jobs report beats estimates; strong labor data boosts Dollar.' },
+            { rank: 'Q', suit: 'BLACK', country: 'Japan', name: 'Japan GDP Growth Data', mod: 2, desc: 'Quarterly GDP print surprises; economic momentum moves Yen.' },
+            { rank: 'K', suit: 'RED', country: 'USA', name: 'US CPI Inflation Data', mod: 3, desc: 'Core CPI surges above expectations; aggressive rate hikes priced in.' },
+            { rank: 'K', suit: 'BLACK', country: 'Japan', name: 'MoF Direct FX Intervention', mod: 3, desc: 'Ministry of Finance steps into order book to support Yen.' },
+            { rank: 'A', suit: 'RED', country: 'USA', name: 'Global Supply Chain Shock', mod: 4, desc: 'Trade disruption triggers safe-haven Dollar demand.' },
+            { rank: 'A', suit: 'BLACK', country: 'Japan', name: 'Energy Import Price Surge', mod: 4, desc: 'Commodity price spike impacts Japan trade balance.' }
+        ];
+
+        // Risk-On vs Risk-Off Money Card Definitions (2 to 10)
+        const moneyCardDeck = {
+            2: {
+                RED: { theme: 'Risk-On / Growth', desc: 'Mild equity market rally boosts USD liquidity demand.' },
+                BLACK: { theme: 'Carry Trade Unwind', desc: 'Slight contraction in risk appetite sparks minor JPY repatriation.' }
+            },
+            3: {
+                RED: { theme: 'Yield Spread Divergence', desc: 'US Treasury yields edge higher, pulling capital into US Dollar.' },
+                BLACK: { theme: 'Safe-Haven Flow', desc: 'Geopolitical friction triggers defensive capital shift into Yen.' }
+            },
+            4: {
+                RED: { theme: 'Risk-On Expansion', desc: 'Strong global trade appetite drives cross-border USD settlements.' },
+                BLACK: { theme: 'Risk-Off Liquidation', desc: 'Equity pullbacks prompt global fund managers to de-risk into JPY.' }
+            },
+            5: {
+                RED: { theme: 'Dollar Reserve Premium', desc: 'Central bank liquidity demand reinforces USD commercial buying.' },
+                BLACK: { theme: 'Safe-Haven Repatriation', desc: 'Japanese institutional investors repatriate overseas capital.' }
+            },
+            6: {
+                RED: { theme: 'Risk-On Momentum', desc: 'Broad market rally drives high-leverage USD commercial borrowing.' },
+                BLACK: { theme: 'Carry Trade De-leveraging', desc: 'Rising market volatility causes traders to close short-Yen carry trades.' }
+            },
+            7: {
+                RED: { theme: 'Safe-Haven Dollar Bid', desc: 'Global banking credit fears drive intense demand for US Treasury assets.' },
+                BLACK: { theme: 'Risk-Off Flight', desc: 'Sharp decline in risk assets triggers accelerated inflow into low-risk Yen.' }
+            },
+            8: {
+                RED: { theme: 'Risk-On Surplus', desc: 'Strong corporate earnings and risk-seeking capital boost US Dollar.' },
+                BLACK: { theme: 'Safe-Haven Surge', desc: 'High market stress forces global liquidity reallocation into Japanese Yen.' }
+            },
+            9: {
+                RED: { theme: 'Global Growth Trade', desc: 'Robust international trade demand drives heavy US Dollar commercial volume.' },
+                BLACK: { theme: 'Risk-Off Panic Bid', desc: 'Widespread liquidation across equities leads to rapid Yen safe-haven accumulation.' }
+            },
+            10: {
+                RED: { theme: 'Macro Risk-On Rally', desc: 'Peak risk sentiment fuels massive capital allocation into US Dollar assets.' },
+                BLACK: { theme: 'Ultimate Safe-Haven Shift', desc: 'Extreme global uncertainty causes historic flight-to-safety into Japanese Yen.' }
+            }
+        };
+
+        function toggleRulesModal() {
+            document.getElementById('rules-modal').classList.toggle('hidden');
+        }
+
+        function toggleGlossaryModal() {
+            document.getElementById('glossary-modal').classList.toggle('hidden');
+        }
+
+        function toggleSettingsModal() {
+            document.getElementById('settings-modal').classList.toggle('hidden');
+        }
+
+        function toggleGameLostModal(show) {
+            const modal = document.getElementById('game-lost-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function applySettings() {
+            let targetInput = parseInt(document.getElementById('setting-win-target').value) || 200;
+            let daysInput = parseInt(document.getElementById('setting-max-days').value) || 22;
+
+            gameState.winTarget = targetInput;
+            gameState.maxDays = daysInput;
+
+            document.getElementById('header-subtitle').innerText = `25x Leverage • ${gameState.maxDays}-Day Season • Target: $${gameState.winTarget}`;
+            toggleSettingsModal();
+            resetGame();
+        }
+
+        function checkBankruptcy() {
+            if (gameState.cash <= 0) {
+                gameState.cash = 0;
+                updateStats();
+                // Pause and keep the bankruptcy modal visible without auto-resetting
+                toggleGameLostModal(true);
+                return true;
+            }
+            return false;
+        }
+
+        function resetGameFromModal() {
+            toggleGameLostModal(false);
+            resetGame();
+        }
+
+        function updateCalculations() {
+            let bet = parseInt(document.getElementById('input-bet').value) || 0;
+            let collateral = parseInt(document.getElementById('input-collateral').value) || 0;
+            
+            let reserve = gameState.cash - (bet + collateral);
+            if (reserve < 0) reserve = 0;
+
+            document.getElementById('input-reserve').value = reserve;
+            document.getElementById('display-margin').innerText = '$' + (bet * 25).toLocaleString();
+
+            gameState.bet = bet;
+            gameState.collateral = collateral;
+            gameState.reserve = reserve;
+        }
+
+        function setDirection(dir) {
+            gameState.direction = dir;
+            const btnUsd = document.getElementById('btn-long-usd');
+            const btnJpy = document.getElementById('btn-long-jpy');
+            if (dir === 'LONG_USD') {
+                btnUsd.className = "p-4 rounded-xl border-2 border-emerald-500 bg-emerald-950/30 text-emerald-300 font-semibold flex flex-col items-center gap-1 transition-all";
+                btnJpy.className = "p-4 rounded-xl border-2 border-slate-800 bg-slate-950 text-slate-400 font-semibold flex flex-col items-center gap-1 transition-all";
+            } else {
+                btnUsd.className = "p-4 rounded-xl border-2 border-slate-800 bg-slate-950 text-slate-400 font-semibold flex flex-col items-center gap-1 transition-all";
+                btnJpy.className = "p-4 rounded-xl border-2 border-emerald-500 bg-emerald-950/30 text-emerald-300 font-semibold flex flex-col items-center gap-1 transition-all";
+            }
+        }
+
+        function executeRound() {
+            let bet = parseInt(document.getElementById('input-bet').value) || 0;
+            let collateral = parseInt(document.getElementById('input-collateral').value) || 0;
+
+            if (!gameState.isRolledOver) {
+                if (bet + collateral > gameState.cash) {
+                    document.getElementById('allocation-error').classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('allocation-error').classList.add('hidden');
+
+                gameState.bet = bet;
+                gameState.collateral = collateral;
+                gameState.reserve = gameState.cash - (bet + collateral);
+            }
+
+            // Draw Card from Macro Trading Calendar Deck
+            const eventCard = eventCalendarDeck[Math.floor(Math.random() * eventCalendarDeck.length)];
+
+            // Draw Money Card (2-10) & Determine Color/Sentiment
+            const moneyVal = Math.floor(Math.random() * 9) + 2;
+            const moneyIsRed = Math.random() < 0.5;
+            const moneyColor = moneyIsRed ? 'RED' : 'BLACK';
+            const moneyInfo = moneyCardDeck[moneyVal][moneyColor];
+
+            let isCatalyst = catalystDays.includes(gameState.day);
+            let totalPoints = moneyVal + eventCard.mod + (isCatalyst ? 1 : 0);
+            
+            let marketDirection = moneyIsRed ? 'LONG_USD' : 'LONG_JPY';
+            let playerWon = (gameState.direction === marketDirection);
+
+            let moveText = `${moneyIsRed ? '+' : '-'}${totalPoints * 100} Pips`;
+
+            currentRoundData = {
+                day: gameState.day,
+                dir: gameState.direction,
+                bet: gameState.bet,
+                eventName: `${eventCard.name} (${eventCard.rank})`,
+                moneyVal: moneyVal,
+                moneyTheme: moneyInfo.theme,
+                move: moveText
+            };
+
+            // Display Trading Calendar Card info on UI
+            document.getElementById('event-rank').innerText = eventCard.rank;
+            document.getElementById('event-suit').innerText = eventCard.suit;
+            document.getElementById('event-name').innerText = eventCard.name;
+            document.getElementById('event-effect').innerText = `${eventCard.country} (+${eventCard.mod} pts): ${eventCard.desc}`;
+            
+            // Display Risk-On / Risk-Off Money Card info on UI
+            document.getElementById('money-value').innerText = moneyVal;
+            document.getElementById('money-suit').innerText = moneyColor === 'RED' ? '🔴 USD' : '⬛ JPY';
+            document.getElementById('money-name').innerText = `Base: ${moneyVal} Pts (${moneyInfo.theme})`;
+            document.getElementById('money-effect').innerText = `${moneyIsRed ? 'USD Driver' : 'JPY Driver'}: ${moneyInfo.desc} ${isCatalyst ? '(+1 Catalyst)' : ''}`;
+
+            document.getElementById('res-total-pips').innerText = `${moveText} (${totalPoints} Points)`;
+            document.getElementById('res-direction').innerText = `${gameState.direction === 'LONG_USD' ? 'Long USD' : 'Long JPY'} ($${(gameState.bet * 25).toLocaleString()})`;
+
+            const outcomeText = document.getElementById('res-outcome-text');
+            const lossActionContainer = document.getElementById('loss-action-container');
+            const nextBtn = document.getElementById('btn-next-round');
+
+            let outcomePnl = 0;
+            let statusLabel = "";
+
+            if (playerWon) {
+                let todayGain = Math.round(totalPoints * gameState.bet * 0.5);
+                let netProfit = todayGain - gameState.accumulatedLoss;
+
+                gameState.cash += netProfit;
+                outcomePnl = netProfit;
+                statusLabel = gameState.isRolledOver ? "WIN (ROLLED OVER)" : "WIN";
+
+                outcomeText.className = "text-xs p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/60 text-emerald-300 font-medium";
+                if (netProfit === 0) {
+                    outcomeText.innerText = `🛡️ Position Recovered! Today's gain (+$${todayGain}) exactly covered your carried-over loss (-$${gameState.accumulatedLoss}). Bankroll secured at $${gameState.cash}.`;
+                } else {
+                    outcomeText.innerText = `🎉 Winning Trade! Gross Gain: +$${todayGain} (Carried Loss: -$${gameState.accumulatedLoss}). Net Added: +$${netProfit}.`;
+                }
+
+                lossActionContainer.classList.add('hidden');
+                nextBtn.classList.remove('hidden');
+
+                recordTradeLog(gameState.day, gameState.direction, gameState.bet, `${currentRoundData.eventName} | ${moneyVal} (${moneyInfo.theme})`, moneyVal, moveText, outcomePnl, statusLabel, gameState.cash);
+                resetPilesAfterRound();
+
+                // Check Win Target Condition
+                if (gameState.cash >= gameState.winTarget) {
+                    alert(`🏆 VICTORY! You reached your target bankroll of $${gameState.winTarget} on Day ${gameState.day}! Final Bankroll: $${gameState.cash}`);
+                    resetGame();
+                    return;
+                }
+            } else {
+                let loss = Math.round(totalPoints * gameState.bet * 0.5) + gameState.accumulatedLoss;
+                if (loss > gameState.collateral) {
+                    gameState.cash -= (gameState.bet + gameState.collateral);
+                    outcomePnl = -(gameState.bet + gameState.collateral);
+                    statusLabel = "LIQUIDATED";
+
+                    outcomeText.className = "text-xs p-3 rounded-lg bg-red-950/30 border border-red-800/60 text-red-300 font-medium";
+                    outcomeText.innerText = `🚨 LIQUIDATION! Loss ($${loss}) exceeded Collateral ($${gameState.collateral}). Entire Bet + Collateral forfeited!`;
+                    
+                    lossActionContainer.classList.add('hidden');
+                    nextBtn.classList.remove('hidden');
+
+                    recordTradeLog(gameState.day, gameState.direction, gameState.bet, `${currentRoundData.eventName} | ${moneyVal} (${moneyInfo.theme})`, moneyVal, moveText, outcomePnl, statusLabel, gameState.cash);
+                    resetPilesAfterRound();
+
+                    if (checkBankruptcy()) return;
+                } else {
+                    gameState.activeLoss = loss;
+                    outcomeText.className = "text-xs p-3 rounded-lg bg-amber-950/30 border border-amber-800/60 text-amber-300 font-medium";
+                    outcomeText.innerText = `⚠️ Losing Trade (-$${loss}). Loss is within your $${gameState.collateral} Collateral buffer.`;
+                    
+                    lossActionContainer.classList.remove('hidden');
+                    nextBtn.classList.add('hidden');
+                }
+            }
+
+            document.getElementById('phase-allocation').classList.add('hidden');
+            document.getElementById('phase-resolution').classList.remove('hidden');
+            updateStats();
+        }
+
+        function resolveLossAction(action) {
+            let pnl = -gameState.activeLoss;
+            let status = "LOSS (CLOSED)";
+
+            if (action === 'CLOSE') {
+                gameState.collateral -= gameState.activeLoss;
+                gameState.cash += gameState.collateral;
+                recordTradeLog(currentRoundData.day, currentRoundData.dir, currentRoundData.bet, currentRoundData.eventName, currentRoundData.moneyVal, currentRoundData.move, pnl, status, gameState.cash);
+                resetPilesAfterRound();
+
+                if (checkBankruptcy()) return;
+            } else if (action === 'ROLLOVER') {
+                if (gameState.reserve >= 5) {
+                    gameState.reserve -= 5;
+                    gameState.cash -= 5;
+
+                    gameState.accumulatedLoss += gameState.activeLoss;
+                    gameState.collateral -= gameState.activeLoss;
+                    gameState.isRolledOver = true;
+
+                    recordTradeLog(currentRoundData.day, currentRoundData.dir, currentRoundData.bet, currentRoundData.eventName, currentRoundData.moneyVal, currentRoundData.move, -5, "ROLLED OVER ($5)", gameState.cash);
+
+                    if (checkBankruptcy()) return;
+
+                    gameState.day++;
+                    if (gameState.day > gameState.maxDays) {
+                        alert(`Game Over! Season complete. Final Bankroll: $${gameState.cash}`);
+                        resetGame();
+                        return;
+                    }
+
+                    document.getElementById('current-day').innerText = `${gameState.day} / ${gameState.maxDays}`;
+                    document.getElementById('loss-action-container').classList.add('hidden');
+                    updateStats();
+                    executeRound();
+                    return;
+                } else {
+                    alert('Not enough cash reserve to pay the $5 fee! Forcing close.');
+                    resolveLossAction('CLOSE');
+                    return;
+                }
+            }
+
+            document.getElementById('loss-action-container').classList.add('hidden');
+            document.getElementById('btn-next-round').classList.remove('hidden');
+            updateStats();
+        }
+
+        function resetPilesAfterRound() {
+            gameState.bet = 0;
+            gameState.collateral = 0;
+            gameState.reserve = gameState.cash;
+            gameState.isRolledOver = false;
+            gameState.accumulatedLoss = 0;
+
+            document.getElementById('input-bet').value = 20;
+            document.getElementById('input-collateral').value = 30;
+            document.getElementById('input-reserve').value = gameState.cash >= 50 ? 50 : gameState.cash;
+        }
+
+        function recordTradeLog(day, dir, bet, eventName, moneyCard, move, pnl, status, bankroll) {
+            const logTbody = document.getElementById('trade-log-tbody');
+            if (gameState.tradeHistory.length === 0) {
+                logTbody.innerHTML = '';
+            }
+
+            const isWin = pnl > 0;
+            const pnlClass = isWin ? 'text-emerald-400 font-bold' : (pnl < 0 ? 'text-red-400 font-bold' : 'text-slate-400');
+            const posBadge = dir === 'LONG_USD' ? '🔴 Long USD' : '⬛ Long JPY';
+
+            gameState.tradeHistory.push({ day, dir, bet, pnl, bankroll });
+            document.getElementById('log-count-badge').innerText = `${gameState.tradeHistory.length} Trades`;
+
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-800/40 transition-colors';
+            row.innerHTML = `
+                <td class="p-2.5 font-bold text-cyan-400">Day ${day}</td>
+                <td class="p-2.5 font-medium">${posBadge}</td>
+                <td class="p-2.5">$${bet} ($${bet * 25})</td>
+                <td class="p-2.5 text-slate-400">${eventName}</td>
+                <td class="p-2.5 font-mono">${move}</td>
+                <td class="p-2.5 ${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl} (${status})</td>
+                <td class="p-2.5 font-bold text-slate-100">$${bankroll}</td>
+            `;
+            logTbody.insertBefore(row, logTbody.firstChild);
+        }
+
+        function nextRound() {
+            gameState.day++;
+            if (gameState.day > gameState.maxDays) {
+                alert(`Game Over! Season complete. Final Bankroll: $${gameState.cash}`);
+                resetGame();
+                return;
+            }
+
+            document.getElementById('current-day').innerText = `${gameState.day} / ${gameState.maxDays}`;
+            const isCat = catalystDays.includes(gameState.day);
+            const badge = document.getElementById('day-type-badge');
+            if (isCat) {
+                badge.className = "px-2 py-0.5 rounded text-xs font-semibold bg-red-950 text-red-400 border border-red-800 animate-pulse";
+                badge.innerText = "💥 Catalyst Day (+100 pips)";
+            } else {
+                badge.className = "px-2 py-0.5 rounded text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800";
+                badge.innerText = "Standard Day";
+            }
+
+            document.getElementById('phase-resolution').classList.add('hidden');
+            document.getElementById('phase-allocation').classList.remove('hidden');
+            updateStats();
+        }
+
+        function resetGame() {
+            gameState.day = 1;
+            gameState.cash = 100;
+            gameState.bet = 20;
+            gameState.collateral = 30;
+            gameState.reserve = 50;
+            gameState.tradeHistory = [];
+            gameState.isRolledOver = false;
+            gameState.accumulatedLoss = 0;
+
+            document.getElementById('current-day').innerText = `1 / ${gameState.maxDays}`;
+            document.getElementById('trade-log-tbody').innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-500">New Season started. Place your first order above!</td></tr>';
+            document.getElementById('log-count-badge').innerText = `0 Trades`;
+            document.getElementById('phase-resolution').classList.add('hidden');
+            document.getElementById('phase-allocation').classList.remove('hidden');
+            updateCalculations();
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('stat-cash').innerText = '$' + gameState.cash;
+            document.getElementById('stat-bet').innerText = '$' + gameState.bet;
+            document.getElementById('stat-collateral').innerText = '$' + gameState.collateral;
+            document.getElementById('stat-reserve').innerText = '$' + gameState.reserve;
+        }
+
+        function renderFeedArticles(articles) {
+            const container = document.getElementById('google-rss-container');
+            container.innerHTML = articles.map(item => `
+                <div class="bg-slate-950/60 p-3 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
+                    <div class="flex justify-between items-start gap-2 mb-1">
+                        <a href="${item.link}" target="_blank" class="font-bold text-slate-200 hover:text-cyan-400 leading-snug">${item.title}</a>
+                        <span class="text-[10px] text-cyan-400 bg-cyan-950/60 px-1.5 py-0.5 rounded whitespace-nowrap border border-cyan-900">${item.time}</span>
+                    </div>
+                    <p class="text-slate-400 text-[11px] leading-relaxed">${item.snippet}</p>
+                </div>
+            `).join('');
+        }
+
+        function fetchGoogleNewsFeed() {
+            const container = document.getElementById('google-rss-container');
+            const webAppUrl = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+
+            if (!webAppUrl.includes('YOUR_GOOGLE_APPS_SCRIPT')) {
+                fetch(webAppUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success' && data.articles && data.articles.length > 0) {
+                            renderFeedArticles(data.articles);
+                            document.getElementById('rss-last-updated').innerText = 'Synced via Google Web App';
+                        } else {
+                            container.innerHTML = `<div class="text-slate-500 text-center py-6">Unable to load feed.</div>`;
+                        }
+                    })
+                    .catch(() => {
+                        container.innerHTML = `<div class="text-slate-500 text-center py-6">Error connecting to Google App URL.</div>`;
+                    });
+                return;
+            }
+
+            renderFeedArticles([
+                { title: "BoJ Rate Expectations & USD/JPY Currency Volatility Surge", time: "Google News", link: "https://news.google.com/search?q=USD+JPY", snippet: "Traders prepare for central bank policy divergence as the Dollar/Yen pair tests critical pivot zones." },
+                { title: "Managing 25x Leveraged Positions During High Inflation Releases", time: "Macro Feed", link: "https://news.google.com/search?q=USD+JPY", snippet: "Institutional margin desks stress-test collateral buffers against overnight carry cost rollovers." },
+                { title: "USD/JPY Technical Outlook: Key Resistance & Support Breakouts", time: "FX Stream", link: "https://news.google.com/search?q=USD+JPY", snippet: "Forex market participants weigh yield differential spreads following economic catalyst data." }
+            ]);
+            document.getElementById('rss-last-updated').innerText = 'Synced (Google News XML)';
+        }
+
+        // Initialize Feed on Load
+        fetchGoogleNewsFeed();
+    </script>
+</body>
+</html>
